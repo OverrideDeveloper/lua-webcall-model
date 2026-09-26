@@ -6,8 +6,8 @@ local function print_help()
     print("lua-webcall-model interactive CLI")
     print("")
     print("Commands:")
-    print("  get <url>                         GET a URL")
-    print("  post <url> <body>                 POST a string body")
+    print("  get <url> [options]               GET a URL")
+    print("  post <url> <body> [options]       POST a string body")
     print("  request <method> <url> [options]  Make a parameterized request")
     print("")
     print("Request options:")
@@ -178,19 +178,49 @@ local function handle(line)
         print_help()
         io.write(prompt)
     elseif command == "get" then
-        if rest == "" then
-            print("usage: get <url>")
+        local arguments, tokenize_error = tokenize(rest)
+        if not arguments or not arguments[1] then
+            print("usage: get <url> [--header \"Name: value\"]")
             io.write(prompt)
         else
-            webcall.get(rest, print_response)
+            local request_arguments = {"GET", table.unpack(arguments)}
+            local options, parse_error = parse_request_arguments(request_arguments)
+            if not options then
+                print("error: " .. parse_error)
+                io.write(prompt)
+            else
+                run_request(options)
+            end
         end
     elseif command == "post" then
-        local url, body = rest:match("^(%S+)%s+(.+)$")
-        if not url then
-            print("usage: post <url> <body>")
+        local arguments, tokenize_error = tokenize(rest)
+        if not arguments or not arguments[1] then
+            print("usage: post <url> <body> [--header \"Name: value\"]")
             io.write(prompt)
         else
-            webcall.post(url, body, print_response)
+            local request_arguments = {"POST", arguments[1]}
+            local start = 2
+
+            if arguments[2] and arguments[2]:sub(1, 2) ~= "--" then
+                request_arguments[#request_arguments + 1] = "--body"
+                request_arguments[#request_arguments + 1] = arguments[2]
+                start = 3
+            end
+
+            for i = start, #arguments do
+                request_arguments[#request_arguments + 1] = arguments[i]
+            end
+
+            local options, parse_error = parse_request_arguments(request_arguments)
+            if not options then
+                print("error: " .. parse_error)
+                io.write(prompt)
+            elseif options.body == nil then
+                print("error: post requires a body (use --body \"text\")")
+                io.write(prompt)
+            else
+                run_request(options)
+            end
         end
     elseif command == "request" then
         local arguments, tokenize_error = tokenize(rest)
