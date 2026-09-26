@@ -54,7 +54,7 @@ local function tokenize(line)
         if quote then
             if char == quote then
                 quote = nil
-            elseif char == "\\\" and i < #line then
+            elseif char == [[\]] and i < #line then
                 i = i + 1
                 token[#token + 1] = line:sub(i, i)
             else
@@ -67,7 +67,7 @@ local function tokenize(line)
                 tokens[#tokens + 1] = table.concat(token)
                 token = {}
             end
-        elseif char == "\\\\" and i < #line then
+        elseif char == [[\]] and i < #line then
             i = i + 1
             token[#token + 1] = line:sub(i, i)
         else
