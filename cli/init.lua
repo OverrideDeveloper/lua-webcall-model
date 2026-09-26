@@ -19,13 +19,14 @@ local function print_response(response, err)
         print("error: " .. tostring(err))
     end
 
-    if not response then
-        return
+    if response then
+        print("HTTP " .. tostring(response.status) .. " " .. response.method .. " " .. response.url)
+        print("body: " .. tostring(#response.body) .. " bytes")
+        print(response.body)
     end
 
-    print("HTTP " .. tostring(response.status) .. " " .. response.method .. " " .. response.url)
-    print("body: " .. tostring(#response.body) .. " bytes")
-    print(response.body)
+    process.stdin:resume()
+    io.write(prompt)
 end
 
 local function run_request(options)
@@ -51,6 +52,7 @@ local function handle(line)
     elseif command == "get" then
         if rest == "" then
             print("usage: get <url>")
+            io.write(prompt)
         else
             webcall.get(rest, print_response)
         end
@@ -58,6 +60,7 @@ local function handle(line)
         local url, body = rest:match("^(%S+)%s+(.+)$")
         if not url then
             print("usage: post <url> <body>")
+            io.write(prompt)
         else
             webcall.post(url, body, print_response)
         end
@@ -65,6 +68,7 @@ local function handle(line)
         local method, url = rest:match("^(%S+)%s+(%S+)$")
         if not method then
             print("usage: request <method> <url>")
+            io.write(prompt)
         else
             run_request({
                 method = method:upper(),
@@ -73,14 +77,14 @@ local function handle(line)
         end
     else
         print("unknown command: " .. command .. " (try 'help')")
+        io.write(prompt)
     end
-
-    io.write(prompt)
 end
 
 print("lua-webcall-model interactive CLI")
 print("Type 'help' for commands or 'quit' to exit.")
 io.write(prompt)
+process.stdin:resume()
 
 process.stdin:on("data", function(chunk)
     for line in tostring(chunk):gmatch("[^\r\n]+") do
