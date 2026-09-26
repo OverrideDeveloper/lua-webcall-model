@@ -51,7 +51,9 @@ Then try commands such as `get https://example.com`, `post https://example.com h
 
 The CLI is deliberately a thin consumer of the same `webcall` module; it is an entry point for experimentation, not another abstraction layer. Request completion and error paths return control to the prompt so a failed call does not terminate the session.
 
-HTTPS requests automatically use the URL host as the TLS server name (SNI). Callers can override this with `servername` and may pass supported TLS options such as `ca` or `rejectUnauthorized`. HTTPS defaults to TLS 1.2 because older Luvit/luvi Windows runtimes have documented TLS handshake failures with their default protocol selection; callers can explicitly set `secureProtocol` when their runtime supports another choice.
+HTTPS requests automatically use the URL host as the TLS server name (SNI). Callers can override this with `servername` and may pass supported TLS options such as `ca` or `rejectUnauthorized`.
+
+For Luvit's TLS binding, `secureProtocol` is an OpenSSL method name such as `TLS_client`; it is not a TLS version string such as `TLSv1_2`. The library defaults to `TLS_client`, which lets the runtime negotiate the highest supported TLS version. Callers can explicitly override `secureProtocol` when their runtime supports another method name.
 
 ## Basic use
 
