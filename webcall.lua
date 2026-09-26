@@ -98,6 +98,31 @@ local function request(options, callback)
         headers = headers,
     }
 
+    -- Luvit's HTTPS transport needs the TLS server name for SNI.
+    -- Keep it tied to the URL host by default, while allowing callers
+    -- to override it when the connection host and certificate name differ.
+    if parsed.scheme == "https" then
+        request_options.servername = options.servername or parsed.host
+
+        local tls_options = {
+            "ca",
+            "cert",
+            "key",
+            "pfx",
+            "passphrase",
+            "ciphers",
+            "rejectUnauthorized",
+            "secureProtocol",
+            "secureOptions",
+        }
+
+        for _, key in ipairs(tls_options) do
+            if options[key] ~= nil then
+                request_options[key] = options[key]
+            end
+        end
+    end
+
     local transport = parsed.scheme == "https" and https or http
 
     local request_ok, req = pcall(transport.request, request_options, function(res)
