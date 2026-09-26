@@ -183,7 +183,10 @@ local function handle(line)
             print("usage: get <url> [--header \"Name: value\"]")
             io.write(prompt)
         else
-            local request_arguments = {"GET", table.unpack(arguments)}
+            local request_arguments = {"GET"}
+            for i = 1, #arguments do
+                request_arguments[#request_arguments + 1] = arguments[i]
+            end
             local options, parse_error = parse_request_arguments(request_arguments)
             if not options then
                 print("error: " .. parse_error)
