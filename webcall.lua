@@ -113,16 +113,12 @@ local function request(options, callback)
         headers = headers,
     }
 
-    -- Luvit's HTTPS transport needs the TLS server name for SNI.
-    -- Keep it tied to the URL host by default, while allowing callers
-    -- to override it when the connection host and certificate name differ.
     if parsed.scheme == "https" then
+        -- Luvit's TLS binding uses OpenSSL method names here. "TLS_client"
+        -- asks OpenSSL for the version-flexible client method; it is not a
+        -- TLS version selector such as "TLSv1_2".
+        request_options.secureProtocol = options.secureProtocol or "TLS_client"
         request_options.servername = options.servername or parsed.host
-
-        -- Older Luvit/luvi Windows builds have known TLS handshake failures
-        -- with their default protocol selection. TLS 1.2 remains broadly
-        -- interoperable and avoids relying on the runtime's TLS default.
-        request_options.secureProtocol = options.secureProtocol or "TLSv1_2"
 
         local tls_options = {
             "ca",
