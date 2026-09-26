@@ -118,7 +118,11 @@ local function request(options, callback)
         -- asks OpenSSL for the version-flexible client method; it is not a
         -- TLS version selector such as "TLSv1_2".
         request_options.secureProtocol = options.secureProtocol or "TLS_client"
-        request_options.servername = options.servername or parsed.host
+
+        -- Luvit passes hostname into its TLS layer for client SNI.
+        -- Keep it tied to the URL host by default, while allowing callers
+        -- to override it when the connection host and certificate name differ.
+        request_options.hostname = options.servername or parsed.host
 
         local tls_options = {
             "ca",
