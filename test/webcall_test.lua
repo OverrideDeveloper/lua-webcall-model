@@ -28,4 +28,12 @@ local ok = pcall(function()
 end)
 assert_equal(ok, false, "unsupported schemes must fail")
 
+local callback_called = false
+webcall.post("http://example.com", {}, function(response, err)
+    callback_called = true
+    assert_equal(response, nil, "invalid body response")
+    assert_equal(err, "request body must be a string", "invalid body error")
+end)
+assert_equal(callback_called, true, "validation errors must reach the callback")
+
 print("webcall tests passed")
