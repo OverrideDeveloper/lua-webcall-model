@@ -49,7 +49,9 @@ If you just want to play with the library without building another Lua applicati
 
 Then try commands such as `get https://example.com`, `post https://example.com hello`, or `request HEAD https://example.com`. Type `help` for the command list and `quit` to leave.
 
-The CLI is deliberately a thin consumer of the same `webcall` module; it is an entry point for experimentation, not another abstraction layer.
+The CLI is deliberately a thin consumer of the same `webcall` module; it is an entry point for experimentation, not another abstraction layer. Request completion and error paths return control to the prompt so a failed call does not terminate the session.
+
+HTTPS requests automatically use the URL host as the TLS server name (SNI). Callers can override this with `servername` and may pass supported TLS options such as `ca` or `rejectUnauthorized`.
 
 ## Basic use
 
@@ -171,6 +173,8 @@ Supported request fields:
 | `headers` | Optional request headers |
 | `body` | Optional string request body |
 | `timeout` | Optional timeout in milliseconds |
+| `servername` | Optional HTTPS TLS server name; defaults to the URL host |
+| TLS options | HTTPS options such as `ca`, `cert`, `key`, `pfx`, `ciphers`, and `rejectUnauthorized` |
 
 ## What this library does not do
 
