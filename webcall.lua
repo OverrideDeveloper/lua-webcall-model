@@ -119,6 +119,11 @@ local function request(options, callback)
     if parsed.scheme == "https" then
         request_options.servername = options.servername or parsed.host
 
+        -- Older Luvit/luvi Windows builds have known TLS handshake failures
+        -- with their default protocol selection. TLS 1.2 remains broadly
+        -- interoperable and avoids relying on the runtime's TLS default.
+        request_options.secureProtocol = options.secureProtocol or "TLSv1_2"
+
         local tls_options = {
             "ca",
             "cert",
