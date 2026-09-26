@@ -41,6 +41,16 @@ This keeps the library useful outside Alice and gives Alice a simple transport s
 
 No AliceWebAI dependency is required.
 
+## Interactive CLI
+
+If you just want to play with the library without building another Lua application, the repository includes a small interactive CLI:
+
+    luvit cli
+
+Then try commands such as `get https://example.com`, `post https://example.com hello`, or `request HEAD https://example.com`. Type `help` for the command list and `quit` to leave.
+
+The CLI is deliberately a thin consumer of the same `webcall` module; it is an entry point for experimentation, not another abstraction layer.
+
 ## Basic use
 
 ```lua
