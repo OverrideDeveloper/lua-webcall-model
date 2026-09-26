@@ -1,0 +1,189 @@
+-- lua-webcall-model
+-- A small, standalone HTTP/HTTPS request abstraction for Lua/Luvit.
+
+local http = require("http")
+local https = require("https")
+
+local M = {}
+
+local function parse_url(value)
+    assert(type(value) == "string", "url must be a string")
+
+    local scheme, authority, rest = value:match("^([%a][%w+.-]*)://([^/%?#]+)(.*)$")
+    assert(scheme, "url must include an http:// or https:// scheme")
+
+    scheme = scheme:lower()
+    assert(scheme == "http" or scheme == "https",
+        "unsupported URL scheme: " .. scheme)
+
+    local host, port = authority:match("^([^:]+):(%d+)$")
+    if not host then
+        host = authority
+    end
+
+    assert(host and host ~= "", "url must include a host")
+
+    rest = rest or ""
+    local path = rest:match("^([^#]*)") or ""
+    if path == "" then
+        path = "/"
+    elseif path:sub(1, 1) ~= "/" then
+        path = "/" .. path
+    end
+
+    local default_port = scheme == "https" and 443 or 80
+
+    return {
+        scheme = scheme,
+        host = host,
+        port = tonumber(port) or default_port,
+        path = path,
+    }
+end
+
+local function copy_table(source)
+    local result = {}
+    for key, value in pairs(source or {}) do
+        result[key] = value
+    end
+    return result
+end
+
+local function finish_once(callback)
+    local finished = false
+
+    return function(response, err)
+        if finished then
+            return
+        end
+
+        finished = true
+        callback(response, err)
+    end
+end
+
+local function request(options, callback)
+    assert(type(options) == "table", "request options must be a table")
+    assert(type(options.url) == "string", "request options require a url")
+    assert(type(callback) == "function", "request callback must be a function")
+
+    local done = finish_once(callback)
+    local ok, parsed = pcall(parse_url, options.url)
+
+    if not ok then
+        done(nil, parsed)
+        return
+    end
+
+    local headers = copy_table(options.headers)
+    local body = options.body
+
+    if body ~= nil then
+        assert(type(body) == "string", "request body must be a string")
+        if headers["Content-Length"] == nil and headers["content-length"] == nil then
+            headers["Content-Length"] = #body
+        end
+    end
+
+    if headers["Connection"] == nil and headers["connection"] == nil then
+        headers["Connection"] = "close"
+    end
+
+    local method = (options.method or "GET"):upper()
+    local request_options = {
+        host = parsed.host,
+        port = options.port or parsed.port,
+        path = parsed.path,
+        method = method,
+        headers = headers,
+    }
+
+    local transport = parsed.scheme == "https" and https or http
+
+    local request_ok, req = pcall(transport.request, request_options, function(res)
+        local chunks = {}
+
+        res:on("data", function(chunk)
+            chunks[#chunks + 1] = chunk
+        end)
+
+        res:on("end", function()
+            local response = {
+                status = res.statusCode,
+                headers = res.headers or {},
+                body = table.concat(chunks),
+                url = options.url,
+                method = method,
+            }
+
+            if res.statusCode and res.statusCode >= 200 and res.statusCode < 300 then
+                done(response, nil)
+            else
+                done(response, string.format("HTTP request failed with status %s",
+                    tostring(res.statusCode)))
+            end
+        end)
+
+        res:on("error", function(err)
+            done(nil, err)
+        end)
+    end)
+
+    if not request_ok then
+        done(nil, req)
+        return
+    end
+
+    req:on("error", function(err)
+        done(nil, err)
+    end)
+
+    if options.timeout then
+        req:setTimeout(options.timeout, function()
+            done(nil, "request timed out after " .. tostring(options.timeout) .. "ms")
+            req:destroy()
+        end)
+    end
+
+    if body ~= nil then
+        req:write(body)
+    end
+
+    req:done()
+end
+
+function M.request(options, callback)
+    return request(options, callback)
+end
+
+function M.get(url, options, callback)
+    if type(options) == "function" then
+        callback = options
+        options = {}
+    end
+
+    options = copy_table(options)
+    options.url = url
+    options.method = "GET"
+
+    return request(options, callback)
+end
+
+function M.post(url, body, options, callback)
+    if type(options) == "function" then
+        callback = options
+        options = {}
+    end
+
+    options = copy_table(options)
+    options.url = url
+    options.method = "POST"
+    options.body = body
+
+    return request(options, callback)
+end
+
+-- Exposed for small consumers/tests that need to inspect URL normalization.
+M.parse_url = parse_url
+
+return M
