@@ -63,9 +63,15 @@ local function finish_once(callback)
 end
 
 local function request(options, callback)
-    assert(type(options) == "table", "request options must be a table")
-    assert(type(options.url) == "string", "request options require a url")
-    assert(type(callback) == "function", "request callback must be a function")
+    if type(options) ~= "table" then
+        error("request options must be a table")
+    end
+    if type(options.url) ~= "string" then
+        error("request options require a url")
+    end
+    if type(callback) ~= "function" then
+        error("request callback must be a function")
+    end
 
     local done = finish_once(callback)
     local ok, parsed = pcall(parse_url, options.url)
@@ -78,8 +84,12 @@ local function request(options, callback)
     local headers = copy_table(options.headers)
     local body = options.body
 
+    if body ~= nil and type(body) ~= "string" then
+        done(nil, "request body must be a string")
+        return
+    end
+
     if body ~= nil then
-        assert(type(body) == "string", "request body must be a string")
         if headers["Content-Length"] == nil and headers["content-length"] == nil then
             headers["Content-Length"] = #body
         end
@@ -89,7 +99,12 @@ local function request(options, callback)
         headers["Connection"] = "close"
     end
 
-    local method = (options.method or "GET"):upper()
+    local method = options.method or "GET"
+    if type(method) ~= "string" then
+        done(nil, "request method must be a string")
+        return
+    end
+    method = method:upper()
     local request_options = {
         host = parsed.host,
         port = options.port or parsed.port,
